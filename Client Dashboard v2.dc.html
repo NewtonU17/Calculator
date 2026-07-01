@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #f8f8f6; }
+  input, textarea, button, select { font-family: 'DM Sans', system-ui; }
+  input:focus, textarea:focus, select:focus { border-color: #4a6a8a !important; outline: none; }
+  ::placeholder { color: #b5b5ad; }
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;height:100vh;font-family:'DM Sans',system-ui">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#fff;border-bottom:1px solid #e6e5e0;flex-shrink:0">
+    <div style="font-weight:600;font-size:16px;line-height:1.2;color:#1e1e1c">Client Dashboard</div>
+    <div onClick="{{ toggleAddClient }}" style="padding:7px 14px;background:#4a6a8a;border-radius:5px;color:#fff;font-weight:500;font-size:12px;line-height:1;cursor:pointer" style-hover="background:#3d5c78">+ Add Client</div>
+  </div>
+
+  <!-- Body -->
+  <div style="display:flex;flex:1;overflow:hidden">
+
+    <!-- Sidebar -->
+    <div style="width:272px;border-right:1px solid #e6e5e0;background:#fafaf8;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column">
+
+      <!-- Add client form -->
+      <sc-if value="{{ addingClient }}" hint-placeholder-val="{{ false }}">
+        <form onSubmit="{{ submitAddClient }}" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #e6e5e0;background:#fff">
+          <input name="clientName" placeholder="Client name…" autoFocus="{{ true }}" style="padding:8px 10px;border:1px solid #e6e5e0;border-radius:4px;font-size:13px;background:#fff" />
+          <select name="clientGroup" style="padding:7px 10px;border:1px solid #e6e5e0;border-radius:4px;font-size:12px;color:#3a3a36;background:#fff">
+            <option value="current">Current</option>
+            <option value="new">New</option>
+            <option value="old">Old</option>
+          </select>
+          <div style="display:flex;gap:6px">
+            <button type="submit" style="flex:1;padding:7px;background:#4a6a8a;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer">Add</button>
+            <button type="button" onClick="{{ toggleAddClient }}" style="padding:7px 12px;background:#fff;border:1px solid #e6e5e0;border-radius:4px;font-size:12px;color:#6a6a62;cursor:pointer">Cancel</button>
+          </div>
+        </form>
+      </sc-if>
+
+      <div style="flex:1;overflow-y:auto">
+        <sc-for list="{{ groups }}" as="group" hint-placeholder-count="3">
+          <div>
+            <div data-group="{{ group.key }}"
+                 onDragOver="{{ handleClientDragOver }}"
+                 onDrop="{{ handleClientDrop }}"
+                 style="display:flex;align-items:center;gap:6px;padding:10px 16px 6px;user-select:none">
+              <div style="width:7px;height:7px;border-radius:50%;background:{{ group.dotColor }};flex-shrink:0"></div>
+              <div style="font-weight:600;font-size:11px;line-height:1;color:#6a6a62;text-transform:uppercase;letter-spacing:0.04em;flex:1">{{ group.label }}</div>
+              <div style="font-size:10px;line-height:1;color:#9a9a90;font-weight:500">{{ group.count }}</div>
+            </div>
+
+            <sc-for list="{{ group.clients }}" as="client" hint-placeholder-count="2">
+              <div>
+                <sc-if value="{{ client.showDropIndicator }}" hint-placeholder-val="{{ false }}">
+                  <div style="height:2px;background:#4a6a8a;margin:0 14px;border-radius:1px"></div>
+                </sc-if>
+                <div data-client-id="{{ client.id }}" data-group="{{ group.key }}"
+                     draggable="true"
+                     onDragStart="{{ handleClientDragStart }}"
+                     onDragOver="{{ handleClientDragOver }}"
+                     onDrop="{{ handleClientDrop }}"
+                     onDragEnd="{{ handleClientDragEnd }}"
+                     onClick="{{ selectClient }}"
+                     style="display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;border-left:3px solid {{ client.borderColor }};background:{{ client.rowBg }};transition:background 0.1s"
+                     style-hover="background:#edf2f6">
+                  <span style="color:{{ client.handleColor }};font-size:12px;cursor:grab;user-select:none;flex-shrink:0">⠿</span>
+                  <span style="width:18px;height:18px;border-radius:50%;background:{{ client.badgeBg }};color:{{ client.badgeColor }};font-weight:600;font-size:9px;line-height:18px;text-align:center;flex-shrink:0">{{ client.priority }}</span>
+                  <span style="font-weight:500;font-size:12.5px;line-height:1.2;color:#1e1e1c;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ client.name }}</span>
+                  <span style="font-size:10px;line-height:1;color:#9a9a90;font-style:{{ client.countStyle }};flex-shrink:0">{{ client.entryLabel }}</span>
+                </div>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ group.isEmpty }}" hint-placeholder-val="{{ false }}">
+              <div data-group="{{ group.key }}" data-empty-zone="1"
+                   onDragOver="{{ handleClientDragOver }}"
+                   onDrop="{{ handleClientDrop }}"
+                   style="padding:6px 14px 10px 40px;font-size:11px;color:#b5b5ad;font-style:italic">Drop clients here</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div style="flex:1;overflow-y:auto;background:#f8f8f6">
+
+      <sc-if value="{{ hasSelectedClient }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px 28px;max-width:780px">
+          <!-- Client header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+              <div style="font-weight:600;font-size:18px;line-height:1.3;color:#1e1e1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ selectedClient.name }}</div>
+              <div style="padding:3px 10px;background:{{ selectedGroupPillBg }};border-radius:10px;font-weight:600;font-size:11px;line-height:1.4;color:{{ selectedGroupPillColor }};white-space:nowrap">{{ selectedGroupLabel }}</div>
+              <div style="padding:3px 10px;background:#edf2f6;border-radius:10px;font-weight:600;font-size:11px;line-height:1.4;color:#4a6a8a;white-space:nowrap">#{{ selectedPriority }}</div>
+            </div>
+            <div onClick="{{ deleteClient }}" style="padding:5px 10px;color:#c5564e;font-size:12px;font-weight:500;cursor:pointer;border-radius:4px;flex-shrink:0;margin-left:12px" style-hover="background:#fef2f1">Delete</div>
+          </div>
+          <div style="font-size:12px;line-height:1;color:#9a9a90;margin-bottom:24px">{{ entryCountText }}</div>
+
+          <!-- Follow-up Email Section -->
+          <div id="followup-zone"
+               style="margin-bottom:24px;padding:16px;background:#fdfcf7;border:1px solid #e8e4d8;border-radius:6px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <div style="font-weight:600;font-size:12px;line-height:1;color:#8a7a52;text-transform:uppercase;letter-spacing:0.04em">Follow-up Email</div>
+              <div style="font-size:10px;line-height:1;color:#b5a87a">Drag or click ✉ on entries</div>
+              <div style="flex:1;height:1px;background:#e8e4d8"></div>
+              <div style="font-size:10px;line-height:1;color:#b5a87a">{{ followUpCount }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ followUpSlots }}" as="slot" hint-placeholder-count="3">
+                <div style="display:flex;align-items:flex-start;gap:8px;min-height:40px">
+                  <div style="width:18px;height:18px;border-radius:50%;background:{{ slot.numBg }};color:{{ slot.numColor }};font-weight:600;font-size:9px;line-height:18px;text-align:center;flex-shrink:0;margin-top:8px">{{ slot.num }}</div>
+
+                  <sc-if value="{{ slot.isEmpty }}" hint-placeholder-val="{{ true }}">
+                    <div style="flex:1;padding:10px 12px;border:1.5px dashed #ddd8c4;border-radius:4px;font-size:11px;color:#b5a87a;text-align:center">Empty slot</div>
+                  </sc-if>
+
+                  <sc-if value="{{ slot.isFilled }}" hint-placeholder-val="{{ false }}">
+                    <div style="flex:1;padding:10px 12px;background:#fff;border:1px solid #e8e4d8;border-radius:4px;display:flex;align-items:flex-start;gap:8px">
+                      <div style="flex:1;min-width:0">
+                        <div style="font-weight:600;font-size:12px;line-height:1.3;color:#1e1e1c;margin-bottom:2px">{{ slot.title }}</div>
+                        <div style="font-size:11px;line-height:1.4;color:#6a6a62;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{ slot.body }}</div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                        <sc-if value="{{ slot.hasScore }}" hint-placeholder-val="{{ false }}">
+                          <div style="padding:2px 6px;background:#f4f7fa;border-radius:3px;font-size:10px;font-weight:600;color:#4a6a8a;line-height:1.3">{{ slot.scoreLabel }}</div>
+                        </sc-if>
+                        <div data-followup-idx="{{ slot.idx }}" onClick="{{ removeFollowUp }}" style="font-size:14px;line-height:1;color:#c5c5bc;cursor:pointer;padding:0 2px" style-hover="color:#c5564e">×</div>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Entries header -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="font-weight:600;font-size:12px;line-height:1;color:#6a6a62;text-transform:uppercase;letter-spacing:0.04em">Entries</div>
+            <div style="flex:1;height:1px;background:#e6e5e0"></div>
+          </div>
+
+          <!-- Entries (draggable for reordering) -->
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <sc-for list="{{ selectedEntries }}" as="entry" hint-placeholder-count="2">
+              <div>
+                <sc-if value="{{ entry.showDropIndicator }}" hint-placeholder-val="{{ false }}">
+                  <div style="height:2px;background:#4a6a8a;margin:4px 0;border-radius:1px"></div>
+                </sc-if>
+                <div data-entry-id="{{ entry.id }}" data-entry-idx="{{ $index }}"
+                     draggable="true"
+                     onDragStart="{{ handleEntryDragStart }}"
+                     onDragOver="{{ handleEntryDragOver }}"
+                     onDrop="{{ handleEntryDrop }}"
+                     onDragEnd="{{ handleEntryDragEnd }}"
+                     style="padding:14px 16px;background:{{ entry.cardBg }};border-radius:5px;border:1px solid {{ entry.cardBorder }};position:relative;transition:border-color 0.15s,opacity 0.2s;cursor:grab;opacity:{{ entry.cardOpacity }}" style-hover="border-color:#ddddd8">
+
+                  <div style="display:flex;align-items:center;margin-bottom:6px;gap:8px">
+                    <!-- Checkbox -->
+                    <div data-entry-id="{{ entry.id }}" onClick="{{ toggleEntryChecked }}"
+                         style="width:16px;height:16px;border-radius:3px;border:1.5px solid {{ entry.checkBorder }};background:{{ entry.checkBg }};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s">
+                      <sc-if value="{{ entry.checked }}" hint-placeholder-val="{{ false }}">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5.5L4 7.5L8 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                      </sc-if>
+                    </div>
+
+                    <span style="color:#d0d0ca;font-size:12px;flex-shrink:0;cursor:grab;user-select:none">⠿</span>
+                    <div style="font-weight:600;font-size:13px;line-height:1.3;color:{{ entry.titleColor }};flex:1;text-decoration:{{ entry.titleDecoration }}">{{ entry.title }}</div>
+
+                    <!-- Add to follow-up button -->
+                    <sc-if value="{{ entry.canAddToFollowUp }}" hint-placeholder-val="{{ true }}">
+                      <div data-entry-id="{{ entry.id }}" onClick="{{ addToFollowUp }}"
+                           style="padding:3px 8px;background:#fdfcf7;border:1px solid #e8e4d8;border-radius:3px;font-size:10px;font-weight:500;color:#8a7a52;cursor:pointer;white-space:nowrap;flex-shrink:0;line-height:1.3"
+                           style-hover="background:#f7f3e8;border-color:#c9bd8e">✉ Email</div>
+                    </sc-if>
+
+                    <!-- Already in follow-up badge -->
+                    <sc-if value="{{ entry.inFollowUp }}" hint-placeholder-val="{{ false }}">
+                      <div style="padding:3px 8px;background:#fdf6e8;border:1px solid #e8e4d8;border-radius:3px;font-size:10px;font-weight:600;color:#8a7a52;line-height:1.3;white-space:nowrap;flex-shrink:0">✉ #{{ entry.followUpNum }}</div>
+                    </sc-if>
+
+                    <!-- Score -->
+                    <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+                      <select data-entry-id="{{ entry.id }}" onChange="{{ handleScoreChange }}" value="{{ entry.scoreVal }}"
+                              style="padding:2px 4px;border:1px solid #e6e5e0;border-radius:3px;font-size:11px;font-weight:600;color:#4a6a8a;background:#f4f7fa;cursor:pointer;width:44px;text-align:center;font-family:'DM Sans',system-ui">
+                        <option value="">—</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                      </select>
+                      <div style="font-size:9px;color:#9a9a90;font-weight:500;line-height:1">/ 10</div>
+                    </div>
+
+                    <div style="font-size:11px;line-height:1;color:#9a9a90;flex-shrink:0">{{ entry.formattedDate }}</div>
+                    <div data-entry-id="{{ entry.id }}" onClick="{{ deleteEntry }}" style="font-size:16px;line-height:1;color:#d0d0ca;cursor:pointer;padding:0 2px;flex-shrink:0" style-hover="color:#c5564e">×</div>
+                  </div>
+
+                  <div style="font-size:13px;line-height:1.6;color:{{ entry.bodyColor }};padding-left:28px">{{ entry.body }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- No entries -->
+          <sc-if value="{{ noEntries }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px 20px;text-align:center;color:#9a9a90;font-size:13px;line-height:1.5">No entries yet — add one below to get started.</div>
+          </sc-if>
+
+          <!-- Add entry button -->
+          <sc-if value="{{ notAddingEntry }}" hint-placeholder-val="{{ true }}">
+            <div onClick="{{ toggleAddEntry }}" style="margin-top:16px;padding:10px;border:1px dashed #d0d0ca;border-radius:5px;text-align:center;font-weight:500;font-size:12px;line-height:1;color:#9a9a90;cursor:pointer;transition:border-color 0.15s,color 0.15s" style-hover="border-color:#4a6a8a;color:#4a6a8a">+ Add Entry</div>
+          </sc-if>
+
+          <!-- Add entry form -->
+          <sc-if value="{{ addingEntry }}" hint-placeholder-val="{{ false }}">
+            <form onSubmit="{{ submitAddEntry }}" style="margin-top:16px;padding:16px;background:#fff;border-radius:5px;border:1px solid #eeede9;display:flex;flex-direction:column;gap:10px">
+              <input name="entryTitle" placeholder="Entry title…" autoFocus="{{ true }}" style="padding:8px 10px;border:1px solid #e6e5e0;border-radius:4px;font-size:13px;font-weight:600;background:#fff" />
+              <textarea name="entryBody" placeholder="Write your entry…" rows="4" style="padding:8px 10px;border:1px solid #e6e5e0;border-radius:4px;font-size:13px;line-height:1.6;resize:vertical;background:#fff;font-family:'DM Sans',system-ui"></textarea>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" onClick="{{ toggleAddEntry }}" style="padding:7px 14px;background:#fff;border:1px solid #e6e5e0;border-radius:4px;font-size:12px;color:#6a6a62;cursor:pointer">Cancel</button>
+                <button type="submit" style="padding:7px 14px;background:#4a6a8a;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer">Save Entry</button>
+              </div>
+            </form>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noSelectedClient }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;padding:40px">
+          <div style="text-align:center;color:#9a9a90">
+            <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:14px;line-height:1.4;margin-bottom:4px">No clients yet</div>
+              <div style="font-size:12px;line-height:1.4">Click "+ Add Client" to get started</div>
+            </sc-if>
+            <sc-if value="{{ hasClients }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:14px;line-height:1.4">Select a client to view entries</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: &quot;100%&quot;, &quot;height&quot;: &quot;100%&quot; },
+  &quot;showDates&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot; }
+}">
+
+class Component extends DCLogic {
+  state = {
+    clients: [],
+    selectedClientId: null,
+    addingClient: false,
+    addingEntry: false,
+    dragClientId: null,
+    dragOverClientId: null,
+    dragOverGroup: null,
+    dragEntryId: null,
+    dragOverEntryIdx: null,
+  };
+
+  GROUPS = ['current', 'new', 'old'];
+  GROUP_META = {
+    current: { label: 'Current', dotColor: '#4a8a5c', pillBg: '#e8f3eb', pillColor: '#3a7a4c' },
+    new:     { label: 'New',     dotColor: '#4a6a8a', pillBg: '#edf2f6', pillColor: '#4a6a8a' },
+    old:     { label: 'Old',     dotColor: '#9a9a90', pillBg: '#f0f0ec', pillColor: '#6a6a62' },
+  };
+
+  _followUpZoneSetUp = false;
+
+  componentDidMount() {
+    this._loadData();
+    this._setupFollowUpDropZone();
+  }
+
+  componentDidUpdate() {
+    this._setupFollowUpDropZone();
+  }
+
+  _setupFollowUpDropZone() {
+    const zone = document.getElementById('followup-zone');
+    if (zone && !this._followUpZoneSetUp) {
+      this._followUpZoneSetUp = true;
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        zone.style.background = '#f7f3e8';
+        zone.style.borderColor = '#c9bd8e';
+      });
+      zone.addEventListener('dragleave', (e) => {
+        if (!zone.contains(e.relatedTarget)) {
+          zone.style.background = '#fdfcf7';
+          zone.style.borderColor = '#e8e4d8';
+        }
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.style.background = '#fdfcf7';
+        zone.style.borderColor = '#e8e4d8';
+        const entryId = e.dataTransfer.getData('text/plain');
+        if (!entryId || !entryId.startsWith('e')) return;
+        this._addEntryToFollowUp(entryId);
+      });
+    } else if (!zone) {
+      this._followUpZoneSetUp = false;
+    }
+  }
+
+  _addEntryToFollowUp(entryId) {
+    const selId = this.state.selectedClientId;
+    if (!selId) return;
+    const client = this.state.clients.find(c => c.id === selId);
+    if (!client) return;
+    const entry = client.entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const followUps = client.followUpEntries || [];
+    // Don't add duplicates (check by source id)
+    if (followUps.some(f => f.sourceId === entryId)) return;
+    // Max 3 slots
+    if (followUps.length >= 3) return;
+
+    const copy = {
+      id: 'fu' + Date.now(),
+      sourceId: entryId,
+      title: entry.title,
+      body: entry.body,
+      score: entry.score,
+      date: entry.date,
+    };
+
+    const next = this.state.clients.map(c => {
+      if (c.id !== selId) return c;
+      return { ...c, followUpEntries: [...followUps, copy] };
+    });
+    this.save(next);
+    this.setState({ clients: next, dragEntryId: null, dragOverEntryIdx: null });
+  }
+
+  _loadData() {
+    try {
+      const saved = localStorage.getItem('client-dashboard-v2');
+      if (saved) {
+        const clients = JSON.parse(saved);
+        if (Array.isArray(clients) && clients.length > 0 && clients[0].group) {
+          // Migrate: ensure entries have checked/score, and client has followUpEntries
+          const migrated = clients.map(c => {
+            let followUps = c.followUpEntries || [];
+            // Migrate from followUpEntryIds if needed
+            if (!followUps.length && c.followUpEntryIds && c.followUpEntryIds.length) {
+              followUps = c.followUpEntryIds.map(eid => {
+                const entry = (c.entries || []).find(e => e.id === eid);
+                if (!entry) return null;
+                return { id: 'fu' + Math.random().toString(36).slice(2), sourceId: eid, title: entry.title, body: entry.body, score: entry.score || '', date: entry.date };
+              }).filter(Boolean);
+            }
+            return {
+              ...c,
+              followUpEntries: followUps,
+              entries: (c.entries || []).map(e => ({
+                ...e,
+                checked: e.checked || false,
+                score: e.score ?? '',
+              })),
+            };
+          });
+          migrated.forEach(c => { delete c.followUpNotes; delete c.followUpEntryIds; });
+          this.save(migrated);
+          this.setState({ clients: migrated, selectedClientId: migrated[0].id });
+          return;
+        }
+      }
+    } catch (e) {}
+
+    const defaults = [
+      { id: 'c1', group: 'current', name: 'Meridian Health', followUpEntries: [], entries: [
+        { id: 'e1', title: 'Q3 Strategy Review', body: 'Discussed roadmap for Q3 including expansion into the Northeast region. Client interested in increasing their service tier — proposal needed by end of month.', date: '2026-06-20', checked: false, score: '8' },
+        { id: 'e2', title: 'Contract Renewal Discussion', body: 'Renewal due August 15th. Renegotiating SLA guarantee terms. Need to involve legal before next call scheduled June 28th.', date: '2026-06-12', checked: false, score: '9' },
+        { id: 'e3', title: 'Onboarding Complete', body: 'All onboarding milestones met. Primary contact is Sarah Chen. Fully operational on platform as of this week.', date: '2026-05-28', checked: true, score: '7' },
+      ]},
+      { id: 'c2', group: 'current', name: 'Oakwood Partners', followUpEntries: [], entries: [
+        { id: 'e4', title: 'Partnership Review', body: 'Reviewed Q2 performance metrics and alignment with growth targets. Overall satisfaction is high but flagged concerns about response times.', date: '2026-06-18', checked: false, score: '6' },
+        { id: 'e5', title: 'Budget Alignment', body: 'Agreed on revised budget allocation for the second half of the year. Finance team will send the updated breakdown by Friday.', date: '2026-06-05', checked: false, score: '' },
+      ]},
+      { id: 'c3', group: 'new', name: 'Vertex Technologies', followUpEntries: [], entries: [
+        { id: 'e6', title: 'Technical Assessment', body: 'Completed infrastructure audit. Recommended migrating to the new API by Q4. Engineering lead is on board.', date: '2026-06-15', checked: false, score: '7' },
+      ]},
+      { id: 'c4', group: 'new', name: 'Greenfield Capital', followUpEntries: [], entries: [
+        { id: 'e7', title: 'Investment Proposal', body: 'Presented growth strategy for H2. They are evaluating alongside two other firms. Decision expected within three weeks.', date: '2026-06-10', checked: false, score: '' },
+        { id: 'e8', title: 'Due Diligence Update', body: 'Background checks and financials verified. No red flags. Ready to move forward pending board approval.', date: '2026-05-30', checked: true, score: '10' },
+      ]},
+      { id: 'c5', group: 'old', name: 'Summit Logistics', followUpEntries: [], entries: [] },
+    ];
+    this.save(defaults);
+    this.setState({ clients: defaults, selectedClientId: 'c1' });
+  }
+
+  save(clients) {
+    localStorage.setItem('client-dashboard-v2', JSON.stringify(clients));
+  }
+
+  formatDate(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  renderVals() {
+    const { clients, selectedClientId, addingClient, addingEntry,
+            dragClientId, dragOverClientId, dragOverGroup,
+            dragEntryId, dragOverEntryIdx } = this.state;
+    const showDates = this.props.showDates ?? true;
+
+    const selectedClient = clients.find(c => c.id === selectedClientId);
+
+    // Build groups
+    const groups = this.GROUPS.map(gKey => {
+      const meta = this.GROUP_META[gKey];
+      const groupClients = clients.filter(c => c.group === gKey);
+      let priorityCounter = 1;
+      const clientRows = groupClients.map(c => {
+        const isSel = c.id === selectedClientId;
+        const p = priorityCounter++;
+        return {
+          id: c.id, name: c.name, priority: p,
+          entryLabel: c.entries.length === 0 ? 'new' : String(c.entries.length),
+          countStyle: c.entries.length === 0 ? 'italic' : 'normal',
+          rowBg: isSel ? '#edf2f6' : 'transparent',
+          borderColor: isSel ? '#4a6a8a' : 'transparent',
+          badgeBg: isSel ? '#4a6a8a' : '#e6e5e0',
+          badgeColor: isSel ? '#fff' : '#6a6a62',
+          handleColor: isSel ? '#b0bfcf' : '#ccccc6',
+          showDropIndicator: dragOverClientId === c.id && dragClientId !== c.id && dragClientId !== null,
+        };
+      });
+      return { key: gKey, label: meta.label, dotColor: meta.dotColor, count: groupClients.length, clients: clientRows, isEmpty: groupClients.length === 0 };
+    });
+
+    // Selected client info
+    let selectedPriority = 0;
+    let selectedGroupLabel = '';
+    let selectedGroupPillBg = '#edf2f6';
+    let selectedGroupPillColor = '#4a6a8a';
+    if (selectedClient) {
+      const sameGroup = clients.filter(c => c.group === selectedClient.group);
+      selectedPriority = sameGroup.findIndex(c => c.id === selectedClient.id) + 1;
+      const meta = this.GROUP_META[selectedClient.group];
+      selectedGroupLabel = meta.label;
+      selectedGroupPillBg = meta.pillBg;
+      selectedGroupPillColor = meta.pillColor;
+    }
+
+    // Follow-up entries (copies)
+    const followUps = selectedClient ? (selectedClient.followUpEntries || []) : [];
+    const followUpSourceIds = new Set(followUps.map(f => f.sourceId));
+
+    const followUpSlots = [0, 1, 2].map(idx => {
+      const fu = followUps[idx] || null;
+      const filled = !!fu;
+      return {
+        idx,
+        num: String(idx + 1),
+        numBg: filled ? '#d4c9a0' : '#ece6d4',
+        numColor: filled ? '#fff' : '#8a7a52',
+        isEmpty: !filled,
+        isFilled: filled,
+        title: fu ? fu.title : '',
+        body: fu ? fu.body : '',
+        scoreLabel: fu && fu.score ? fu.score + '/10' : '',
+        hasScore: fu && fu.score ? true : false,
+      };
+    });
+
+    const followUpCount = followUps.length + ' / 3';
+
+    // Entries for selected client
+    const rawEntries = selectedClient ? selectedClient.entries : [];
+    const selectedEntries = rawEntries.map((e, i) => {
+      const isInFollowUp = followUpSourceIds.has(e.id);
+      const fuIdx = isInFollowUp ? followUps.findIndex(f => f.sourceId === e.id) : -1;
+      return {
+        ...e,
+        formattedDate: showDates ? this.formatDate(e.date) : '',
+        showDropIndicator: dragOverEntryIdx === i && dragEntryId !== e.id && dragEntryId !== null,
+        scoreVal: e.score || '',
+        cardBg: e.checked ? '#fafaf8' : '#fff',
+        cardBorder: e.checked ? '#e6e5e0' : '#eeede9',
+        cardOpacity: e.checked ? '0.7' : '1',
+        titleColor: e.checked ? '#9a9a90' : '#1e1e1c',
+        titleDecoration: e.checked ? 'line-through' : 'none',
+        bodyColor: e.checked ? '#b5b5ad' : '#5a5a54',
+        checkBg: e.checked ? '#4a8a5c' : '#fff',
+        checkBorder: e.checked ? '#4a8a5c' : '#c5c5bc',
+        inFollowUp: isInFollowUp,
+        canAddToFollowUp: !isInFollowUp && followUps.length < 3,
+        followUpNum: fuIdx !== -1 ? String(fuIdx + 1) : '',
+      };
+    });
+
+    const entryCount = selectedEntries.length;
+    const checkedCount = rawEntries.filter(e => e.checked).length;
+    const entryCountText = entryCount === 0 ? 'No entries'
+      : (entryCount === 1 ? '1 entry' : entryCount + ' entries')
+        + (checkedCount > 0 ? ' · ' + checkedCount + ' done' : '');
+
+    return {
+      groups,
+      selectedClient: selectedClient || { name: '', entries: [] },
+      selectedPriority, selectedGroupLabel, selectedGroupPillBg, selectedGroupPillColor,
+      selectedEntries, entryCountText,
+      followUpSlots, followUpCount,
+      hasSelectedClient: !!selectedClient,
+      noSelectedClient: !selectedClient,
+      hasClients: clients.length > 0,
+      noClients: clients.length === 0,
+      noEntries: entryCount === 0,
+      addingClient, addingEntry,
+      notAddingEntry: !addingEntry,
+
+      toggleAddClient: () => this.setState(s => ({ addingClient: !s.addingClient })),
+      toggleAddEntry: () => this.setState(s => ({ addingEntry: !s.addingEntry })),
+
+      selectClient: (e) => {
+        const id = e.currentTarget.dataset.clientId;
+        if (id && id !== this.state.selectedClientId) {
+          this.setState({ selectedClientId: id, addingEntry: false });
+        }
+      },
+
+      // ── Checkbox ──
+      toggleEntryChecked: (e) => {
+        e.stopPropagation();
+        const entryId = e.currentTarget.dataset.entryId;
+        const next = this.state.clients.map(c => {
+          if (c.id !== this.state.selectedClientId) return c;
+          return { ...c, entries: c.entries.map(en => en.id === entryId ? { ...en, checked: !en.checked } : en) };
+        });
+        this.save(next);
+        this.setState({ clients: next });
+      },
+
+      // ── Score ──
+      handleScoreChange: (e) => {
+        const entryId = e.currentTarget.dataset.entryId;
+        const val = e.currentTarget.value;
+        const next = this.state.clients.map(c => {
+          if (c.id !== this.state.selectedClientId) return c;
+          return { ...c, entries: c.entries.map(en => en.id === entryId ? { ...en, score: val } : en) };
+        });
+        this.save(next);
+        this.setState({ clients: next });
+      },
+
+      // ── Add to follow-up (click button) ──
+      addToFollowUp: (e) => {
+        e.stopPropagation();
+        const entryId = e.currentTarget.dataset.entryId;
+        this._addEntryToFollowUp(entryId);
+      },
+
+      // ── Remove from follow-up ──
+      removeFollowUp: (e) => {
+        e.stopPropagation();
+        const idx = parseInt(e.currentTarget.dataset.followupIdx, 10);
+        const next = this.state.clients.map(c => {
+          if (c.id !== this.state.selectedClientId) return c;
+          const fus = [...(c.followUpEntries || [])];
+          fus.splice(idx, 1);
+          return { ...c, followUpEntries: fus };
+        });
+        this.save(next);
+        this.setState({ clients: next });
+      },
+
+      // ── Client drag ──
+      handleClientDragStart: (e) => {
+        const id = e.currentTarget.dataset.clientId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.setData('application/x-client', '1');
+        setTimeout(() => this.setState({ dragClientId: id }), 0);
+      },
+
+      handleClientDragOver: (e) => {
+        if (this.state.dragClientId === null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const targetId = e.currentTarget.dataset.clientId || null;
+        const targetGroup = e.currentTarget.dataset.group || null;
+        if (this.state.dragOverClientId !== targetId || this.state.dragOverGroup !== targetGroup) {
+          this.setState({ dragOverClientId: targetId, dragOverGroup: targetGroup });
+        }
+      },
+
+      handleClientDrop: (e) => {
+        e.preventDefault();
+        const { dragClientId } = this.state;
+        if (!dragClientId) return;
+        const targetGroup = e.currentTarget.dataset.group;
+        const targetClientId = e.currentTarget.dataset.clientId;
+        const next = [...this.state.clients];
+        const srcIdx = next.findIndex(c => c.id === dragClientId);
+        if (srcIdx === -1) { this.setState({ dragClientId: null, dragOverClientId: null, dragOverGroup: null }); return; }
+        const [moved] = next.splice(srcIdx, 1);
+        moved.group = targetGroup;
+        if (targetClientId && targetClientId !== dragClientId) {
+          const destIdx = next.findIndex(c => c.id === targetClientId);
+          if (destIdx !== -1) { next.splice(destIdx, 0, moved); } else { next.push(moved); }
+        } else {
+          const lastInGroup = this._lastIndexOf(next, targetGroup);
+          next.splice(lastInGroup + 1, 0, moved);
+        }
+        this.save(next);
+        this.setState({ clients: next, dragClientId: null, dragOverClientId: null, dragOverGroup: null });
+      },
+
+      handleClientDragEnd: () => {
+        this.setState({ dragClientId: null, dragOverClientId: null, dragOverGroup: null });
+      },
+
+      // ── Entry drag (reorder) ──
+      handleEntryDragStart: (e) => {
+        const id = e.currentTarget.dataset.entryId;
+        e.dataTransfer.effectAllowed = 'copyMove';
+        e.dataTransfer.setData('text/plain', id);
+        setTimeout(() => this.setState({ dragEntryId: id }), 0);
+      },
+
+      handleEntryDragOver: (e) => {
+        if (this.state.dragEntryId === null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const idx = parseInt(e.currentTarget.dataset.entryIdx, 10);
+        if (this.state.dragOverEntryIdx !== idx) {
+          this.setState({ dragOverEntryIdx: idx });
+        }
+      },
+
+      handleEntryDrop: (e) => {
+        e.preventDefault();
+        const { dragEntryId, selectedClientId: selId } = this.state;
+        if (!dragEntryId || !selId) { this.setState({ dragEntryId: null, dragOverEntryIdx: null }); return; }
+        const toIdx = parseInt(e.currentTarget.dataset.entryIdx, 10);
+        const next = this.state.clients.map(c => {
+          if (c.id !== selId) return c;
+          const entries = [...c.entries];
+          const fromIdx = entries.findIndex(en => en.id === dragEntryId);
+          if (fromIdx === -1 || fromIdx === toIdx) return c;
+          const [moved] = entries.splice(fromIdx, 1);
+          entries.splice(toIdx, 0, moved);
+          return { ...c, entries };
+        });
+        this.save(next);
+        this.setState({ clients: next, dragEntryId: null, dragOverEntryIdx: null });
+      },
+
+      handleEntryDragEnd: () => {
+        this.setState({ dragEntryId: null, dragOverEntryIdx: null });
+      },
+
+      // ── Actions ──
+      submitAddClient: (e) => {
+        e.preventDefault();
+        const name = e.target.elements.clientName.value.trim();
+        const group = e.target.elements.clientGroup.value;
+        if (!name) return;
+        const newClient = { id: 'c' + Date.now(), name, group, entries: [], followUpEntries: [] };
+        const next = [...this.state.clients, newClient];
+        this.save(next);
+        this.setState({ clients: next, selectedClientId: newClient.id, addingClient: false, addingEntry: false });
+      },
+
+      deleteClient: () => {
+        const id = this.state.selectedClientId;
+        const next = this.state.clients.filter(c => c.id !== id);
+        this.save(next);
+        this.setState({ clients: next, selectedClientId: next.length > 0 ? next[0].id : null, addingEntry: false });
+      },
+
+      submitAddEntry: (e) => {
+        e.preventDefault();
+        const title = e.target.elements.entryTitle.value.trim();
+        const body = e.target.elements.entryBody.value.trim();
+        if (!title) return;
+        const newEntry = { id: 'e' + Date.now(), title, body: body || '', date: new Date().toISOString().split('T')[0], checked: false, score: '' };
+        const next = this.state.clients.map(c => {
+          if (c.id !== this.state.selectedClientId) return c;
+          return { ...c, entries: [newEntry, ...c.entries] };
+        });
+        this.save(next);
+        this.setState({ clients: next, addingEntry: false });
+      },
+
+      deleteEntry: (e) => {
+        e.stopPropagation();
+        const entryId = e.currentTarget.dataset.entryId;
+        const next = this.state.clients.map(c => {
+          if (c.id !== this.state.selectedClientId) return c;
+          return {
+            ...c,
+            entries: c.entries.filter(en => en.id !== entryId),
+          };
+        });
+        this.save(next);
+        this.setState({ clients: next });
+      },
+    };
+  }
+
+  _lastIndexOf(arr, group) {
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i].group === group) return i;
+    }
+    const order = this.GROUPS;
+    const gIdx = order.indexOf(group);
+    for (let g = gIdx - 1; g >= 0; g--) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].group === order[g]) return i;
+      }
+    }
+    return -1;
+  }
+}
+
+</script>
+</body>
+</html>
