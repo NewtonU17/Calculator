@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/industry-c1b799cc-dfe8-446b-a5e3-5d9f040e1932/styles.css">
+<script src="./image-slot.js"></script>
+<style>a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}.nav,.card{pointer-events:auto;background:var(--color-bg)}</style>
+</helmet>
+<div style="position:fixed;inset:0;z-index:-1;background:#000">
+  <image-slot id="page-background" shape="rect" fit="contain" src="assets/mcduck-background.jpg" placeholder="Drop a background image" style="width:100%;height:100%"></image-slot>
+</div>
+<div style="min-height:100vh;background:transparent;color:var(--color-text);pointer-events:none">
+  <div class="nav" style="border-bottom:1px solid var(--color-divider)">
+    <div class="nav-brand">Compound<span style="color:var(--color-accent)">.</span></div>
+    <div class="text-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.08em">Time value of money solver</div>
+  </div>
+
+  <div style="max-width:1280px;margin:0 auto;padding:var(--space-8) var(--space-6)">
+    <p class="text-muted" style="font-size:13px;margin:0 0 var(--space-6);max-width:640px">Enter a cash flow series and a compound interest rate, choose the unknown, and see the standard factor notation used to solve it.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8);align-items:start">
+      <div style="display:flex;flex-direction:column;gap:var(--space-6)">
+
+        <div class="card blueprint" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Input</div>
+          <div class="card-title">Cash flow series</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-3)">
+            <sc-for list="{{rows}}" as="row" hint-placeholder-count="4">
+              <sc-if value="{{row.isSingle}}" hint-placeholder-val="{{true}}">
+                <div style="display:flex;gap:var(--space-2);align-items:center">
+                  <input class="input" style="width:76px" type="number" step="1" value="{{row.n}}" onChange="{{row.onNChange}}">
+                  <input class="input" style="flex:1" type="number" step="any" value="{{row.amount}}" onChange="{{row.onAmountChange}}">
+                  <button class="btn btn-icon" onClick="{{row.onRemove}}" aria-label="Remove entry"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button>
+                </div>
+              </sc-if>
+              <sc-if value="{{row.isSeries}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex;flex-direction:column;gap:6px;padding:var(--space-2);border:1px dashed var(--color-divider)">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="tag tag-accent-2">series A</span>
+                    <button class="btn btn-icon" style="margin-left:auto" onClick="{{row.onRemove}}" aria-label="Remove series"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button>
+                  </div>
+                  <div style="display:flex;gap:var(--space-2);align-items:center">
+                    <input class="input" style="width:56px" type="number" min="1" step="1" value="{{row.nStart}}" onChange="{{row.onStartChange}}">
+                    <span class="text-muted" style="font-size:12px">to</span>
+                    <input class="input" style="width:56px" type="number" min="1" step="1" value="{{row.nEnd}}" onChange="{{row.onEndChange}}">
+                    <input class="input" style="flex:1" type="number" step="any" value="{{row.amount}}" onChange="{{row.onAmountChange}}" disabled="{{row.isUnknown}}" placeholder="{{row.amountPlaceholder}}">
+                  </div>
+                  <label style="display:flex;gap:6px;align-items:center;font-size:11px" class="text-muted">
+                    <input type="checkbox" checked="{{row.isUnknown}}" onChange="{{row.onToggleUnknown}}"> mark this A as the unknown to solve for
+                  </label>
+                </div>
+              </sc-if>
+            </sc-for>
+            <div style="display:flex;gap:var(--space-2)">
+              <button class="btn btn-secondary" style="flex:1" onClick="{{addSingleRow}}">+ Single entry</button>
+              <button class="btn btn-secondary" style="flex:1" onClick="{{addSeriesRow}}">+ Series (A)</button>
+            </div>
+            <sc-if value="{{hasNoFlows}}" hint-placeholder-val="{{false}}">
+              <p class="text-muted" style="font-size:12px;margin:0">Add at least one entry to compute a result.</p>
+            </sc-if>
+          </div>
+        </div>
+
+        <div class="card blueprint" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Parameters</div>
+          <div class="card-title">Interest &amp; horizon</div>
+          <div class="field" style="margin-top:var(--space-3)"><label>Total periods N</label><input class="input" type="number" min="{{maxN}}" step="1" value="{{totalN}}" onChange="{{onNOverrideChange}}"></div>
+          <p class="text-muted" style="font-size:11px;margin:var(--space-2) 0 0">N defaults to the longest period entered ({{maxN}}); raise it to extend the horizon.</p>
+
+          <div class="card-title" style="font-size:13px;margin-top:var(--space-4)">Rate schedule</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <sc-for list="{{rateRows}}" as="rr" hint-placeholder-count="1">
+              <div style="display:flex;gap:var(--space-2);align-items:center">
+                <span style="font-family:var(--font-heading);font-weight:600;font-size:12px;width:20px">{{rr.indexLabel}}</span>
+                <input class="input" style="width:52px" type="number" min="1" step="1" value="{{rr.nStart}}" onChange="{{rr.onStartChange}}">
+                <span class="text-muted" style="font-size:12px">to</span>
+                <input class="input" style="width:52px" type="number" min="1" step="1" value="{{rr.nEnd}}" onChange="{{rr.onEndChange}}">
+                <input class="input" style="width:72px" type="number" step="0.01" value="{{rr.rate}}" onChange="{{rr.onRateChange}}">
+                <span class="text-muted" style="font-size:12px">%</span>
+                <sc-if value="{{rr.canRemove}}" hint-placeholder-val="{{false}}">
+                  <button class="btn btn-icon" style="margin-left:auto" onClick="{{rr.onRemove}}" aria-label="Remove rate period"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg></button>
+                </sc-if>
+              </div>
+            </sc-for>
+            <button class="btn btn-secondary" onClick="{{addRateSegment}}">+ Add rate period</button>
+          </div>
+          <p class="text-muted" style="font-size:11px;margin:var(--space-2) 0 0">Each period uses the rate of the segment covering it; periods outside every segment default to 0%. Solving for i finds one flat rate for the whole cash flow and ignores this schedule.</p>
+        </div>
+
+        <sc-if value="{{showDiagram}}" hint-placeholder-val="{{true}}">
+        <div class="card blueprint" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Diagram</div>
+          <div class="card-title">Cash flow timeline</div>
+          <div style="position:relative;height:150px;margin-top:var(--space-6)">
+            <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--color-divider)"></div>
+            <sc-if value="{{showGuide}}" hint-placeholder-val="{{false}}">
+              <div style="{{guideStyle}}"></div>
+              <div style="{{guideLabelStyle}}">t</div>
+            </sc-if>
+            <div style="display:flex;height:100%">
+              <sc-for list="{{columns}}" as="col" hint-placeholder-count="6">
+                <div style="flex:1;position:relative">
+                  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1px;height:8px;background:var(--color-divider)"></div>
+                  <sc-if value="{{col.isPositive}}" hint-placeholder-val="{{false}}">
+                    <div style="{{col.barStyle}}"></div>
+                    <div style="{{col.labelStyle}}" class="text-muted">{{col.amountLabel}}</div>
+                  </sc-if>
+                  <sc-if value="{{col.isNegative}}" hint-placeholder-val="{{false}}">
+                    <div style="{{col.barStyle}}"></div>
+                    <div style="{{col.labelStyle}}" class="text-muted">{{col.amountLabel}}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;margin-top:6px">
+            <sc-for list="{{columns}}" as="col2" hint-placeholder-count="6">
+              <div class="text-muted" style="flex:1;text-align:center;font-size:10px">{{col2.n}}</div>
+            </sc-for>
+          </div>
+          <sc-if value="{{diagramTruncated}}" hint-placeholder-val="{{false}}">
+            <p class="text-muted" style="font-size:10px;margin:var(--space-2) 0 0">Diagram truncated to the first 30 periods.</p>
+          </sc-if>
+        </div>
+        </sc-if>
+
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--space-6)">
+
+        <div class="card blueprint" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Solve</div>
+          <div class="card-title">Choose the unknown</div>
+          <div class="seg" style="margin-top:var(--space-3);width:100%">
+            <sc-for list="{{unknownOptions}}" as="opt" hint-placeholder-count="5">
+              <label class="seg-opt" style="flex:1;justify-content:center">
+                <input type="radio" name="unknown" checked="{{opt.checked}}" onChange="{{opt.onSelect}}">
+                <span style="display:flex;flex-direction:column;align-items:center;line-height:1.15">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:15px">{{opt.symbol}}</span>
+                  <span style="font-size:8px;text-transform:uppercase;letter-spacing:.03em">{{opt.label}}</span>
+                </span>
+              </label>
+            </sc-for>
+          </div>
+          <p class="text-muted" style="font-size:12px;margin-top:var(--space-2)">{{unknownDescription}}</p>
+
+          <sc-if value="{{showEvalPeriod}}" hint-placeholder-val="{{false}}">
+            <div class="field" style="margin-top:var(--space-3)">
+              <label>Evaluate at period — eligible n</label>
+              <select class="input" value="{{evalPeriod}}" onChange="{{onEvalPeriodChange}}">
+                <sc-for list="{{evalPeriodOptions}}" as="opt2" hint-placeholder-count="3">
+                  <option value="{{opt2.value}}">{{opt2.label}}</option>
+                </sc-for>
+              </select>
+            </div>
+          </sc-if>
+        </div>
+
+        <div class="card blueprint" style="padding:var(--space-4)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Result</div>
+          <div class="card-title">{{resultTitle}}</div>
+
+          <sc-if value="{{hasFlows}}" hint-placeholder-val="{{false}}">
+
+          <sc-if value="{{isModeSingle}}" hint-placeholder-val="{{false}}">
+            <div style="margin-top:var(--space-3);font-size:15px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+              <span style="font-family:var(--font-heading);font-weight:600;white-space:nowrap">{{formulaLabel}} =</span>
+              <sc-for list="{{formulaTerms}}" as="term" hint-placeholder-count="3">
+                <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
+                <sc-for list="{{term.factorLabels}}" as="fl" hint-placeholder-count="1">
+                  <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
+                </sc-for>
+              </sc-for>
+            </div>
+            <div style="margin-top:var(--space-2);font-family:var(--font-heading);font-size:34px;font-weight:600;color:var(--color-accent-800)">{{formulaResultValue}}</div>
+          </sc-if>
+
+          <sc-if value="{{isModeAnnuity}}" hint-placeholder-val="{{false}}">
+            <sc-if value="{{annuityInvalid}}" hint-placeholder-val="{{false}}">
+              <p class="text-muted" style="margin-top:var(--space-3);font-size:13px">Can't solve for A — check the series' period range (end must be at or after start).</p>
+            </sc-if>
+            <sc-if value="{{!annuityInvalid}}" hint-placeholder-val="{{true}}">
+              <div class="text-muted" style="margin-top:var(--space-3);font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+                <span style="white-space:nowrap">{{formulaLabel}} =</span>
+                <sc-for list="{{formulaTerms}}" as="term" hint-placeholder-count="3">
+                  <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
+                  <sc-for list="{{term.factorLabels}}" as="fl" hint-placeholder-count="1">
+                    <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
+                  </sc-for>
+                </sc-for>
+                <sc-if value="{{showEquationResult}}" hint-placeholder-val="{{false}}"><span style="white-space:nowrap">= {{formulaResultValue}}</span></sc-if>
+              </div>
+              <sc-if value="{{annuityUsesWhole}}" hint-placeholder-val="{{false}}">
+                <div style="margin-top:var(--space-3);font-size:15px">
+                  <span style="font-family:var(--font-heading);font-weight:600">A</span> = P <span class="tag tag-outline">{{apFactorLabel}}</span>
+                </div>
+              </sc-if>
+              <div style="margin-top:var(--space-2);font-family:var(--font-heading);font-size:34px;font-weight:600;color:var(--color-accent-800)">A = {{aResultValue}} <span style="font-size:13px;font-weight:400;font-family:var(--font-body)">/ period</span></div>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{isModeRate}}" hint-placeholder-val="{{false}}">
+            <sc-if value="{{irrFound}}" hint-placeholder-val="{{false}}">
+              <div style="margin-top:var(--space-3);font-size:14px">0 = &Sigma; CF<sub>k</sub> <span class="tag tag-outline">(P/F, i, k)</span></div>
+              <div style="margin-top:var(--space-2);font-family:var(--font-heading);font-size:34px;font-weight:600;color:var(--color-accent-800)">i &asymp; {{irrResultValue}}</div>
+              <p class="text-muted" style="font-size:11px;margin-top:var(--space-2)">Rate of return that makes the series' present worth zero.</p>
+            </sc-if>
+            <sc-if value="{{irrNotFound}}" hint-placeholder-val="{{false}}">
+              <p class="text-muted" style="margin-top:var(--space-3);font-size:13px">No sign change in the series — a rate of return can't be solved. Enter at least one inflow and one outflow.</p>
+            </sc-if>
+          </sc-if>
+
+          <sc-if value="{{isModePeriods}}" hint-placeholder-val="{{false}}">
+            <table class="table" style="margin-top:var(--space-3)">
+              <thead><tr><th>Period n</th><th>Cumulative worth</th><th></th></tr></thead>
+              <tbody>
+                <sc-for list="{{periodsTable}}" as="prow" hint-placeholder-count="3">
+                  <tr style="{{prow.rowStyle}}">
+                    <td>{{prow.n}}</td>
+                    <td>{{prow.cumulativeLabel}}</td>
+                    <td><sc-if value="{{prow.hasNote}}" hint-placeholder-val="{{false}}"><span class="tag {{prow.noteCls}}">{{prow.noteText}}</span></sc-if></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <p style="margin-top:var(--space-3);font-size:13px">
+              <sc-if value="{{breakevenFound}}" hint-placeholder-val="{{false}}">Breakeven at eligible <b>n = {{breakevenN}}</b> — cumulative worth first turns non-negative there.</sc-if>
+              <sc-if value="{{breakevenNotFound}}" hint-placeholder-val="{{false}}">Cumulative worth never reaches zero across the entered periods.</sc-if>
+            </p>
+          </sc-if>
+
+          </sc-if>
+          <sc-if value="{{hasNoFlows}}" hint-placeholder-val="{{false}}">
+            <p class="text-muted" style="margin-top:var(--space-3);font-size:13px">Add cash flow entries on the left to see a result.</p>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;currencySymbol&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;$&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;decimalPlaces&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2,&quot;min&quot;:0,&quot;max&quot;:4,&quot;tsType&quot;:&quot;number&quot;},&quot;showDiagram&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+function fmtMoney(x, sym, dp) {
+  const sign = x < 0 ? '-' : '';
+  const abs = Math.abs(x);
+  return sign + sym + abs.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+function factorAP(iDec, n) {
+  if (n <= 0) return 0;
+  if (iDec === 0) return 1 / n;
+  const c = Math.pow(1 + iDec, n);
+  return (iDec * c) / (c - 1);
+}
+function factorPA(iDec, m) {
+  if (m <= 0) return 0;
+  if (iDec === 0) return m;
+  const c = Math.pow(1 + iDec, m);
+  return (c - 1) / (iDec * c);
+}
+function buildGrowth(totalN, segs) {
+  const growth = [1];
+  for (let k = 1; k <= totalN; k++) {
+    const seg = segs.find(s => k >= s.nStart && k <= s.nEnd);
+    growth[k] = growth[k - 1] * (1 + (seg ? seg.rate : 0) / 100);
+  }
+  return growth;
+}
+function segmentSpansBetween(lo, hi, segs) {
+  const out = [];
+  segs.forEach(s => {
+    const from = Math.max(s.nStart, lo + 1), to = Math.min(s.nEnd, hi);
+    if (from <= to) out.push({ rate: s.rate, span: to - from + 1, from });
+  });
+  out.sort((a, b) => a.from - b.from);
+  return out;
+}
+function buildChain(nFrom, nTo, segs) {
+  if (nFrom === nTo) return { labels: [], multiplier: 1 };
+  const forward = nTo > nFrom;
+  const lo = Math.min(nFrom, nTo), hi = Math.max(nFrom, nTo);
+  let spans = segmentSpansBetween(lo, hi, segs);
+  if (!forward) spans = spans.slice().reverse();
+  let multiplier = 1; const labels = [];
+  spans.forEach(sp => {
+    const type = forward ? 'F/P' : 'P/F';
+    const factor = forward ? Math.pow(1 + sp.rate / 100, sp.span) : 1 / Math.pow(1 + sp.rate / 100, sp.span);
+    multiplier *= factor;
+    labels.push(`(${type}, ${sp.rate}%, ${sp.span}) = ${factor.toFixed(4)}`);
+  });
+  return { labels, multiplier };
+}
+function singleTermAt(t, f, segs, growth) {
+  if (f.n === t) return { amount: f.amount, contribution: f.amount, factorLabels: [] };
+  const chain = buildChain(f.n, t, segs);
+  return { amount: f.amount, contribution: f.amount * (growth[t] / growth[f.n]), factorLabels: chain.labels };
+}
+function seriesContribution(nStart, nEnd, amountVal, t, segs, growth) {
+  let pw0 = 0; const labels = [];
+  let k = nStart;
+  while (k <= nEnd) {
+    const seg = segs.find(s => k >= s.nStart && k <= s.nEnd) || { rate: 0, nEnd };
+    const segEndEff = Math.min(seg.nEnd, nEnd);
+    const m = segEndEff - k + 1;
+    const pa = factorPA(seg.rate / 100, m);
+    labels.push(`(P/A, ${seg.rate}%, ${m}) = ${pa.toFixed(4)}`);
+    const valueAtKMinus1 = amountVal * pa;
+    const g = growth[k - 1] != null ? growth[k - 1] : 1;
+    pw0 += valueAtKMinus1 / g;
+    const chainToZero = buildChain(k - 1, 0, segs);
+    labels.push(...chainToZero.labels);
+    k = segEndEff + 1;
+  }
+  const chainToT = buildChain(0, t, segs);
+  labels.push(...chainToT.labels);
+  const contribution = pw0 * growth[t];
+  return { amount: amountVal, contribution, factorLabels: labels };
+}
+function computeAllTermsAt(t, singles, seriesFlows, segs, growth) {
+  const terms = singles.map(f => singleTermAt(t, f, segs, growth));
+  seriesFlows.forEach(sr => terms.push(seriesContribution(sr.nStart, sr.nEnd, sr.amount, t, segs, growth)));
+  return terms;
+}
+function computeIRR(singles, seriesFlows) {
+  const npv = i => {
+    let s = singles.reduce((acc, f) => acc + f.amount / Math.pow(1 + i, f.n), 0);
+    seriesFlows.forEach(sr => {
+      const m = sr.nEnd - sr.nStart + 1;
+      if (m <= 0) return;
+      const pa = factorPA(i, m);
+      const pf = sr.nStart - 1 > 0 ? 1 / Math.pow(1 + i, sr.nStart - 1) : 1;
+      s += sr.amount * pa * pf;
+    });
+    return s;
+  };
+  const lo = -0.99, hi = 10, steps = 400;
+  let prevI = lo, prevV = npv(lo), bracket = null;
+  for (let k = 1; k <= steps; k++) {
+    const curI = lo + (hi - lo) * k / steps, curV = npv(curI);
+    if ((prevV < 0 && curV > 0) || (prevV > 0 && curV < 0)) { bracket = [prevI, curI]; break; }
+    prevI = curI; prevV = curV;
+  }
+  if (!bracket) return { found: false };
+  let [a, b] = bracket, fa = npv(a);
+  for (let it = 0; it < 80; it++) {
+    const m = (a + b) / 2, fm = npv(m);
+    if (Math.abs(fm) < 1e-9) return { found: true, i: m };
+    if ((fa < 0 && fm > 0) || (fa > 0 && fm < 0)) { b = m; } else { a = m; fa = fm; }
+  }
+  return { found: true, i: (a + b) / 2 };
+}
+function cumulativeAt(p, singles, seriesFlows, segs, growth) {
+  let s = singles.filter(f => f.n <= p).reduce((acc, f) => acc + f.amount / growth[f.n], 0);
+  seriesFlows.forEach(sr => {
+    const end = Math.min(p, sr.nEnd);
+    if (end < sr.nStart) return;
+    s += seriesContribution(sr.nStart, end, sr.amount, 0, segs, growth).contribution;
+  });
+  return s;
+}
+
+class Component extends DCLogic {
+  state = {
+    cashFlows: [
+      { id: 1, type: 'single', n: 0, amount: -5000 },
+      { id: 2, type: 'single', n: 3, amount: 1500 },
+      { id: 3, type: 'single', n: 5, amount: 1500 },
+      { id: 4, type: 'single', n: 8, amount: 2500 }
+    ],
+    nextId: 5,
+    rateSegments: [{ id: 1, nStart: 1, nEnd: 8, rate: 8 }],
+    nextRateId: 2,
+    nOverride: null,
+    unknown: 'F',
+    evalPeriod: null
+  };
+
+  getMaxN() {
+    const ns = this.state.cashFlows.flatMap(f => f.type === 'series' ? [f.nStart, f.nEnd] : [f.n]);
+    return ns.length ? Math.max(0, ...ns) : 0;
+  }
+  getTotalN() {
+    const m = this.getMaxN();
+    return this.state.nOverride != null ? Math.max(this.state.nOverride, m) : m;
+  }
+
+  addSingleRow = () => {
+    const n = this.getMaxN() + (this.state.cashFlows.length ? 1 : 0);
+    this.setState(s => ({ cashFlows: [...s.cashFlows, { id: s.nextId, type: 'single', n, amount: 0 }], nextId: s.nextId + 1 }));
+  };
+  addSeriesRow = () => {
+    const m = this.getMaxN();
+    this.setState(s => ({ cashFlows: [...s.cashFlows, { id: s.nextId, type: 'series', nStart: m + 1, nEnd: m + 3, amount: 0, isUnknown: false }], nextId: s.nextId + 1 }));
+  };
+  removeRow = id => this.setState(s => ({ cashFlows: s.cashFlows.filter(f => f.id !== id) }));
+  updateRow(id, field, raw) {
+    if (field === 'amount') {
+      this.setState(s => ({ cashFlows: s.cashFlows.map(f => f.id === id ? { ...f, amount: raw } : f) }));
+      return;
+    }
+    const val = parseInt(raw, 10) || 0;
+    this.setState(s => ({ cashFlows: s.cashFlows.map(f => f.id === id ? { ...f, [field]: val } : f) }));
+  }
+  updateSeriesField(id, field, raw) {
+    if (field === 'amount') {
+      this.setState(s => ({ cashFlows: s.cashFlows.map(f => f.id === id ? { ...f, amount: raw } : f) }));
+      return;
+    }
+    const val = parseInt(raw, 10) || 0;
+    this.setState(s => ({ cashFlows: s.cashFlows.map(f => f.id === id ? { ...f, [field]: val } : f) }));
+  }
+  toggleSeriesUnknown(id) {
+    this.setState(s => {
+      const target = s.cashFlows.find(f => f.id === id);
+      const turningOn = !target.isUnknown;
+      return {
+        cashFlows: s.cashFlows.map(f => f.type === 'series' ? { ...f, isUnknown: f.id === id ? turningOn : false } : f),
+        unknown: turningOn ? 'A' : s.unknown
+      };
+    });
+  }
+  onNOverrideChange = e => this.setState({ nOverride: parseInt(e.target.value, 10) || 0 });
+  addRateSegment = () => {
+    this.setState(s => {
+      const lastEnd = s.rateSegments.length ? Math.max(...s.rateSegments.map(sg => sg.nEnd)) : 0;
+      const lastRate = s.rateSegments.length ? s.rateSegments[s.rateSegments.length - 1].rate : 8;
+      return { rateSegments: [...s.rateSegments, { id: s.nextRateId, nStart: lastEnd + 1, nEnd: lastEnd + 3, rate: lastRate }], nextRateId: s.nextRateId + 1 };
+    });
+  };
+  removeRateSegment = id => {
+    this.setState(s => {
+      const rest = s.rateSegments.filter(sg => sg.id !== id);
+      return { rateSegments: rest.length ? rest : [{ id: s.nextRateId, nStart: 1, nEnd: this.getTotalN(), rate: 8 }], nextRateId: rest.length ? s.nextRateId : s.nextRateId + 1 };
+    });
+  };
+  updateRateSegment(id, field, raw) {
+    if (field === 'rate') {
+      this.setState(s => ({ rateSegments: s.rateSegments.map(sg => sg.id === id ? { ...sg, rate: raw } : sg) }));
+      return;
+    }
+    const val = parseInt(raw, 10) || 0;
+    this.setState(s => ({ rateSegments: s.rateSegments.map(sg => sg.id === id ? { ...sg, [field]: val } : sg) }));
+  }
+  setUnknown(u) {
+    this.setState(() => {
+      const totalN = this.getTotalN();
+      return { unknown: u, evalPeriod: u === 'P' ? 0 : u === 'F' ? totalN : null };
+    });
+  }
+  onEvalPeriodChange = e => this.setState({ evalPeriod: parseInt(e.target.value, 10) });
+
+  buildTerms(rawTerms) {
+    const sym = this.props.currencySymbol ?? '$', dp = this.props.decimalPlaces ?? 2;
+    return rawTerms.map((t, idx) => {
+      const isFirst = idx === 0;
+      const sign = isFirst && t.amount >= 0 ? '' : (t.amount >= 0 ? '+' : '\u2212');
+      return { sign, amountAbs: fmtMoney(Math.abs(t.amount), sym, dp), factorLabels: t.factorLabels };
+    });
+  }
+
+  renderVals() {
+    const sym = this.props.currencySymbol ?? '$';
+    const dp = this.props.decimalPlaces ?? 2;
+    const money = x => fmtMoney(x, sym, dp);
+    const rawCashFlows = this.state.cashFlows;
+    const singlesRaw = rawCashFlows.filter(f => f.type !== 'series');
+    const seriesRaw = rawCashFlows.filter(f => f.type === 'series');
+    const singles = singlesRaw.map(f => ({ id: f.id, n: f.n, amount: Number(f.amount) || 0 }));
+    const hasFlows = singles.length + seriesRaw.length > 0;
+    const maxN = this.getMaxN();
+    const totalN = this.getTotalN();
+    const unknown = this.state.unknown;
+    const segs = this.state.rateSegments.map(sg => ({ nStart: sg.nStart, nEnd: sg.nEnd, rate: Number(sg.rate) || 0 })).sort((a, b) => a.nStart - b.nStart);
+    const growth = buildGrowth(totalN, segs);
+    const rateRows = this.state.rateSegments.map((sg, idx) => ({
+      indexLabel: `i${idx + 1}`, nStart: sg.nStart, nEnd: sg.nEnd, rate: sg.rate,
+      canRemove: this.state.rateSegments.length > 1,
+      onStartChange: e => this.updateRateSegment(sg.id, 'nStart', e.target.value),
+      onEndChange: e => this.updateRateSegment(sg.id, 'nEnd', e.target.value),
+      onRateChange: e => this.updateRateSegment(sg.id, 'rate', e.target.value),
+      onRemove: () => this.removeRateSegment(sg.id)
+    }));
+
+    const activeUnknownSeriesRaw = unknown === 'A' ? (seriesRaw.find(f => f.isUnknown) || null) : null;
+    const activeId = activeUnknownSeriesRaw ? activeUnknownSeriesRaw.id : null;
+    const seriesFlows = seriesRaw.filter(f => f.id !== activeId).map(f => ({ id: f.id, nStart: f.nStart, nEnd: f.nEnd, amount: Number(f.amount) || 0 }));
+
+    const rows = rawCashFlows.map(f => {
+      if (f.type === 'series') {
+        return {
+          id: f.id, isSeries: true, isSingle: false,
+          nStart: f.nStart, nEnd: f.nEnd, amount: f.isUnknown ? '' : f.amount,
+          isUnknown: !!f.isUnknown, amountPlaceholder: f.isUnknown ? 'solving\u2026' : '',
+          onStartChange: e => this.updateSeriesField(f.id, 'nStart', e.target.value),
+          onEndChange: e => this.updateSeriesField(f.id, 'nEnd', e.target.value),
+          onAmountChange: e => this.updateSeriesField(f.id, 'amount', e.target.value),
+          onToggleUnknown: () => this.toggleSeriesUnknown(f.id),
+          onRemove: () => this.removeRow(f.id)
+        };
+      }
+      return {
+        id: f.id, isSeries: false, isSingle: true, n: f.n, amount: f.amount,
+        onNChange: e => this.updateRow(f.id, 'n', e.target.value),
+        onAmountChange: e => this.updateRow(f.id, 'amount', e.target.value),
+        onRemove: () => this.removeRow(f.id)
+      };
+    });
+
+    const unknownDefs = [
+      { key: 'P', label: 'Present', desc: "Present worth of the series at n = 0." },
+      { key: 'F', label: 'Future', desc: "Equivalent worth of the series at the period selected below." },
+      { key: 'A', label: 'Uniform', desc: "Uniform series equivalent. Flag a series entry's amount as unknown to solve for it directly; otherwise the whole present worth converts to a uniform series over N." },
+      { key: 'i', label: 'Rate', desc: "Rate of return \u2014 one flat rate for the whole cash flow that makes its present worth zero. The rate schedule is ignored while solving for i." },
+      { key: 'n', label: 'Periods', desc: "Number of periods for the series' cumulative worth to reach zero." }
+    ];
+    const unknownOptions = unknownDefs.map(d => ({ symbol: d.key, label: d.label, checked: unknown === d.key, onSelect: () => this.setUnknown(d.key) }));
+    const unknownDescription = unknownDefs.find(d => d.key === unknown).desc;
+    const titleMap = { P: 'Present worth (P)', F: 'Future worth (F)', A: 'Uniform series (A)', i: 'Rate of return (i)', n: 'Number of periods (n)' };
+
+    const showEvalPeriod = unknown === 'P' || unknown === 'F';
+    const eligibleSet = Array.from(new Set(
+      singles.map(f => f.n).concat(seriesRaw.flatMap(sr => [sr.nStart, sr.nEnd])).concat([0, totalN])
+    )).sort((a, b) => a - b);
+    const evalPeriodOptions = eligibleSet.map(p => ({ value: p, label: `n = ${p}` + (p === totalN ? ' (total)' : '') }));
+    const evalPeriod = this.state.evalPeriod != null ? this.state.evalPeriod : (unknown === 'P' ? 0 : totalN);
+
+    let isModeSingle = false, isModeAnnuity = false, isModeRate = false, isModePeriods = false;
+    let formulaLabel = '', formulaTerms = [], formulaResultValue = '', showEquationResult = false;
+    let apFactorLabel = '', aResultValue = '', annuityUsesSeries = false, annuityUsesWhole = false, annuityInvalid = false;
+    let irrFound = false, irrNotFound = false, irrResultValue = '';
+    let periodsTable = [], breakevenFound = false, breakevenNotFound = false, breakevenN = null;
+    const resolvedSeriesAmounts = {};
+
+    if (hasFlows) {
+      if (unknown === 'P' || unknown === 'F') {
+        isModeSingle = true;
+        const t = evalPeriod;
+        const rawTerms = computeAllTermsAt(t, singles, seriesFlows, segs, growth);
+        formulaLabel = unknown;
+        formulaTerms = this.buildTerms(rawTerms);
+        formulaResultValue = money(rawTerms.reduce((s, r) => s + r.contribution, 0));
+      } else if (unknown === 'A') {
+        isModeAnnuity = true;
+        if (activeUnknownSeriesRaw) {
+          annuityUsesSeries = true;
+          const knownTerms = computeAllTermsAt(0, singles, seriesFlows, segs, growth);
+          const pwKnown = knownTerms.reduce((s, r) => s + r.contribution, 0);
+          const unit = seriesContribution(activeUnknownSeriesRaw.nStart, activeUnknownSeriesRaw.nEnd, 1, 0, segs, growth);
+          if (Math.abs(unit.contribution) < 1e-12) {
+            annuityInvalid = true;
+          } else {
+            const solvedA = -pwKnown / unit.contribution;
+            const built = this.buildTerms(knownTerms);
+            const pseudo = { sign: built.length ? '+' : '', amountAbs: 'A', factorLabels: unit.factorLabels };
+            formulaLabel = '0';
+            formulaTerms = [...built, pseudo];
+            showEquationResult = false;
+            aResultValue = money(solvedA);
+            resolvedSeriesAmounts[activeUnknownSeriesRaw.id] = solvedA;
+          }
+        } else {
+          annuityUsesWhole = true;
+          const rawTerms = computeAllTermsAt(0, singles, seriesFlows, segs, growth);
+          const pTotal = rawTerms.reduce((s, r) => s + r.contribution, 0);
+          formulaLabel = 'P (at n = 0)';
+          formulaTerms = this.buildTerms(rawTerms);
+          formulaResultValue = money(pTotal);
+          showEquationResult = true;
+          const lastSeg = segs.find(sg => totalN >= sg.nStart && totalN <= sg.nEnd) || segs[segs.length - 1] || { rate: 0 };
+          const ap = factorAP(lastSeg.rate / 100, totalN);
+          apFactorLabel = `(A/P, ${lastSeg.rate}%, ${totalN}) = ${ap.toFixed(4)}`;
+          aResultValue = money(pTotal * ap);
+        }
+      } else if (unknown === 'i') {
+        isModeRate = true;
+        const r = computeIRR(singles, seriesRaw.map(sr => ({ nStart: sr.nStart, nEnd: sr.nEnd, amount: Number(sr.amount) || 0 })));
+        if (r.found) { irrFound = true; irrResultValue = (r.i * 100).toFixed(2) + '%'; } else irrNotFound = true;
+      } else if (unknown === 'n') {
+        isModePeriods = true;
+        const rows2 = eligibleSet.map(p => ({ n: p, cumulative: cumulativeAt(p, singles, seriesFlows, segs, growth) }));
+        const be = rows2.find(r => r.cumulative >= 0);
+        breakevenN = be ? be.n : null; breakevenFound = !!be; breakevenNotFound = !be;
+        periodsTable = rows2.map(r => {
+          const isBE = r.n === breakevenN, isTotal = r.n === totalN;
+          const noteText = isBE && isTotal ? 'breakeven \u00b7 total n' : isBE ? 'breakeven' : isTotal ? 'total n' : '';
+          return { n: r.n, cumulativeLabel: money(r.cumulative), rowStyle: isBE ? { background: 'var(--color-accent-100)' } : {}, hasNote: !!noteText, noteText, noteCls: isBE ? 'tag-accent' : 'tag-neutral' };
+        });
+      }
+    }
+
+    const diagramN = Math.min(totalN, 30);
+    const diagramTruncated = totalN > 30;
+    const netByPeriod = {};
+    singles.forEach(f => { if (f.n <= diagramN) netByPeriod[f.n] = (netByPeriod[f.n] || 0) + f.amount; });
+    seriesRaw.forEach(sr => {
+      const amt = resolvedSeriesAmounts[sr.id] != null ? resolvedSeriesAmounts[sr.id] : (Number(sr.amount) || 0);
+      const start = Math.max(0, sr.nStart), end = Math.min(diagramN, sr.nEnd);
+      for (let k = start; k <= end; k++) netByPeriod[k] = (netByPeriod[k] || 0) + amt;
+    });
+    const maxAbs = Math.max(1, ...Object.values(netByPeriod).map(v => Math.abs(v)));
+    const columns = [];
+    for (let p = 0; p <= diagramN; p++) {
+      const amt = netByPeriod[p] || 0;
+      const h = amt === 0 ? 0 : Math.max(6, Math.round(Math.abs(amt) / maxAbs * 56));
+      const isPositive = amt > 0, isNegative = amt < 0;
+      const stagger = amt !== 0 && p % 2 === 1 ? 13 : 0;
+      const barStyle = isPositive
+        ? { position: 'absolute', left: '50%', bottom: '50%', transform: 'translateX(-50%)', width: '4px', height: h + 'px', background: 'var(--color-accent)' }
+        : { position: 'absolute', left: '50%', top: '50%', transform: 'translateX(-50%)', width: '4px', height: h + 'px', background: 'var(--color-neutral-800)' };
+      const labelStyle = isPositive
+        ? { position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: `calc(50% + ${h + 4 + stagger}px)`, fontSize: '10px', whiteSpace: 'nowrap' }
+        : { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: `calc(50% + ${h + 4 + stagger}px)`, fontSize: '10px', whiteSpace: 'nowrap' };
+      columns.push({ n: p, isPositive, isNegative, barStyle, labelStyle, amountLabel: amt !== 0 ? money(amt) : '' });
+    }
+    const showGuide = showEvalPeriod && hasFlows;
+    const guideLeftPct = ((evalPeriod + 0.5) / (diagramN + 1)) * 100;
+    const guideStyle = { position: 'absolute', left: guideLeftPct + '%', top: 0, bottom: 0, width: 0, borderLeft: '1.5px dashed var(--color-accent)', transform: 'translateX(-50%)' };
+    const guideLabelStyle = { position: 'absolute', left: guideLeftPct + '%', top: '-16px', transform: 'translateX(-50%)', fontSize: '10px', color: 'var(--color-accent-700)', fontFamily: 'var(--font-heading)', fontWeight: 600 };
+
+    return {
+      rows, addSingleRow: this.addSingleRow, addSeriesRow: this.addSeriesRow, hasNoFlows: !hasFlows, hasFlows,
+      totalN, maxN, onNOverrideChange: this.onNOverrideChange, rateRows, addRateSegment: this.addRateSegment,
+      unknownOptions, unknownDescription, resultTitle: titleMap[unknown],
+      showEvalPeriod, evalPeriodOptions, evalPeriod, onEvalPeriodChange: this.onEvalPeriodChange,
+      isModeSingle, isModeAnnuity, isModeRate, isModePeriods,
+      formulaLabel, formulaTerms, formulaResultValue, showEquationResult,
+      apFactorLabel, aResultValue, annuityUsesSeries, annuityUsesWhole, annuityInvalid,
+      irrFound, irrNotFound, irrResultValue,
+      periodsTable, breakevenFound, breakevenNotFound, breakevenN,
+      columns, diagramTruncated, showDiagram: this.props.showDiagram ?? true,
+      showGuide, guideStyle, guideLabelStyle
+    };
+  }
+}
+
+</script>
+</body>
+</html>
