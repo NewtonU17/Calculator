@@ -9,6 +9,7 @@
 <x-dc>
 <helmet data-dc-atomics>
 <link rel="stylesheet" href="_ds/industry-c1b799cc-dfe8-446b-a5e3-5d9f040e1932/styles.css">
+<script src="_ds/industry-c1b799cc-dfe8-446b-a5e3-5d9f040e1932/_ds_bundle.js"></script>
 <script src="./image-slot.js"></script>
 <style>a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}.nav,.card{pointer-events:auto;background:var(--color-bg)}</style>
 </helmet>
@@ -177,10 +178,21 @@
             <div style="margin-top:var(--space-3);font-size:15px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
               <span style="font-family:var(--font-heading);font-weight:600;white-space:nowrap">{{formulaLabel}} =</span>
               <sc-for list="{{formulaTerms}}" as="term" hint-placeholder-count="3">
-                <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
-                <sc-for list="{{term.factorLabels}}" as="fl" hint-placeholder-count="1">
-                  <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
-                </sc-for>
+                <span style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px">
+                  <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
+                  <sc-if value="{{term.multiGroup}}" hint-placeholder-val="{{false}}"><span style="color:var(--color-accent-700)">&times;</span></sc-if>
+                  <span style="{{term.groupWrapStyle}}">
+                    <sc-for list="{{term.groups}}" as="grp" hint-placeholder-count="1">
+                      <sc-if value="{{grp.showPlus}}" hint-placeholder-val="{{false}}"><span style="color:var(--color-accent-700)">+</span></sc-if>
+                      <sc-for list="{{grp.labels}}" as="fl" hint-placeholder-count="1">
+                        <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
+                      </sc-for>
+                    </sc-for>
+                  </span>
+                  <sc-for list="{{term.trailing}}" as="tf" hint-placeholder-count="0">
+                    <span class="tag tag-outline" style="white-space:nowrap">{{tf}}</span>
+                  </sc-for>
+                </span>
               </sc-for>
             </div>
             <div style="margin-top:var(--space-2);font-family:var(--font-heading);font-size:34px;font-weight:600;color:var(--color-accent-800)">{{formulaResultValue}}</div>
@@ -194,10 +206,21 @@
               <div class="text-muted" style="margin-top:var(--space-3);font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:6px">
                 <span style="white-space:nowrap">{{formulaLabel}} =</span>
                 <sc-for list="{{formulaTerms}}" as="term" hint-placeholder-count="3">
-                  <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
-                  <sc-for list="{{term.factorLabels}}" as="fl" hint-placeholder-count="1">
-                    <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
-                  </sc-for>
+                  <span style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px">
+                    <span style="white-space:nowrap">{{term.sign}} {{term.amountAbs}}</span>
+                    <sc-if value="{{term.multiGroup}}" hint-placeholder-val="{{false}}"><span style="color:var(--color-accent-700)">&times;</span></sc-if>
+                    <span style="{{term.groupWrapStyle}}">
+                      <sc-for list="{{term.groups}}" as="grp" hint-placeholder-count="1">
+                        <sc-if value="{{grp.showPlus}}" hint-placeholder-val="{{false}}"><span style="color:var(--color-accent-700)">+</span></sc-if>
+                        <sc-for list="{{grp.labels}}" as="fl" hint-placeholder-count="1">
+                          <span class="tag tag-outline" style="white-space:nowrap">{{fl}}</span>
+                        </sc-for>
+                      </sc-for>
+                    </span>
+                    <sc-for list="{{term.trailing}}" as="tf" hint-placeholder-count="0">
+                      <span class="tag tag-outline" style="white-space:nowrap">{{tf}}</span>
+                    </sc-for>
+                  </span>
                 </sc-for>
                 <sc-if value="{{showEquationResult}}" hint-placeholder-val="{{false}}"><span style="white-space:nowrap">= {{formulaResultValue}}</span></sc-if>
               </div>
@@ -303,30 +326,27 @@ function buildChain(nFrom, nTo, segs) {
   return { labels, multiplier };
 }
 function singleTermAt(t, f, segs, growth) {
-  if (f.n === t) return { amount: f.amount, contribution: f.amount, factorLabels: [] };
+  if (f.n === t) return { amount: f.amount, contribution: f.amount, factorGroups: [], trailingFactors: [] };
   const chain = buildChain(f.n, t, segs);
-  return { amount: f.amount, contribution: f.amount * (growth[t] / growth[f.n]), factorLabels: chain.labels };
+  return { amount: f.amount, contribution: f.amount * (growth[t] / growth[f.n]), factorGroups: [chain.labels], trailingFactors: [] };
 }
 function seriesContribution(nStart, nEnd, amountVal, t, segs, growth) {
-  let pw0 = 0; const labels = [];
+  let pw0 = 0;
+  const factorGroups = [];
   let k = nStart;
   while (k <= nEnd) {
     const seg = segs.find(s => k >= s.nStart && k <= s.nEnd) || { rate: 0, nEnd };
     const segEndEff = Math.min(seg.nEnd, nEnd);
     const m = segEndEff - k + 1;
     const pa = factorPA(seg.rate / 100, m);
-    labels.push(`(P/A, ${seg.rate}%, ${m}) = ${pa.toFixed(4)}`);
-    const valueAtKMinus1 = amountVal * pa;
+    const group = [`(P/A, ${seg.rate}%, ${m}) = ${pa.toFixed(4)}`];
     const g = growth[k - 1] != null ? growth[k - 1] : 1;
-    pw0 += valueAtKMinus1 / g;
-    const chainToZero = buildChain(k - 1, 0, segs);
-    labels.push(...chainToZero.labels);
+    pw0 += (amountVal * pa) / g;
+    group.push(...buildChain(k - 1, 0, segs).labels);
+    factorGroups.push(group);
     k = segEndEff + 1;
   }
-  const chainToT = buildChain(0, t, segs);
-  labels.push(...chainToT.labels);
-  const contribution = pw0 * growth[t];
-  return { amount: amountVal, contribution, factorLabels: labels };
+  return { amount: amountVal, contribution: pw0 * growth[t], factorGroups, trailingFactors: buildChain(0, t, segs).labels };
 }
 function computeAllTermsAt(t, singles, seriesFlows, segs, growth) {
   const terms = singles.map(f => singleTermAt(t, f, segs, growth));
@@ -461,12 +481,24 @@ class Component extends DCLogic {
   }
   onEvalPeriodChange = e => this.setState({ evalPeriod: parseInt(e.target.value, 10) });
 
+  displayTerm(sign, amountAbs, t) {
+    const groups = (t.factorGroups || []).filter(g => g.length);
+    const multiGroup = groups.length > 1;
+    return {
+      sign, amountAbs, multiGroup,
+      groupWrapStyle: multiGroup
+        ? { display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', padding: '3px 8px', borderLeft: '2px solid var(--color-accent)', borderRight: '2px solid var(--color-accent)', background: 'var(--color-accent-100)' }
+        : { display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' },
+      groups: groups.map((labels, i) => ({ labels, showPlus: i > 0 })),
+      trailing: t.trailingFactors || []
+    };
+  }
   buildTerms(rawTerms) {
     const sym = this.props.currencySymbol ?? '$', dp = this.props.decimalPlaces ?? 2;
     return rawTerms.map((t, idx) => {
       const isFirst = idx === 0;
       const sign = isFirst && t.amount >= 0 ? '' : (t.amount >= 0 ? '+' : '\u2212');
-      return { sign, amountAbs: fmtMoney(Math.abs(t.amount), sym, dp), factorLabels: t.factorLabels };
+      return this.displayTerm(sign, fmtMoney(Math.abs(t.amount), sym, dp), t);
     });
   }
 
@@ -563,7 +595,7 @@ class Component extends DCLogic {
           } else {
             const solvedA = -pwKnown / unit.contribution;
             const built = this.buildTerms(knownTerms);
-            const pseudo = { sign: built.length ? '+' : '', amountAbs: 'A', factorLabels: unit.factorLabels };
+            const pseudo = this.displayTerm(built.length ? '+' : '', 'A', unit);
             formulaLabel = '0';
             formulaTerms = [...built, pseudo];
             showEquationResult = false;
